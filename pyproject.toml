@@ -19,7 +19,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Programming Language :: Python :: 3",
     "Development Status :: 2 - Pre-Alpha",
-    "License :: OSI Approved :: MIT License""License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
     "Operating System :: OS Independent",
 ]
 
