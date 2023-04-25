@@ -1,18 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
-
-def linear(x, a, b):
-return a*x + b
-#今やること：documentの作成
-#最終目的：ユーザが使いやすいようにする
-
-
-# In[60]:
-
 
 from typing import Optional, MutableMapping, Mapping, Any
+import numpy as np
+from scipy.integrate import solve_ivp
+import yaml
+
 # Inspired from Nevergrad (MIT License) Registry class (https://github.com/facebookresearch/nevergrad/blob/master/nevergrad/common/decorators.py)
 class Registry(dict):
     """Registers function or classes as a dict."""
@@ -42,18 +36,6 @@ class Registry(dict):
         return self._information.setdefault(name, {})
 
 registry = Registry()
-
-
-# In[3]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-
-
-# In[4]:
-
 
 class Reaction:    
     def __init__(self,name,rate,reactants,products):   
@@ -89,10 +71,7 @@ class Reaction:
         return str(self)
 
 
-# In[5]:
-
-
-class Species:  #物質の定義
+class Species: 
     def __init__(self,name,concentration,diffusion, parameter= None):   #コンストラクタ：インスタンス生成の際に必ず呼び出される。初期化
         self.name=name
         self.init_conc = concentration
@@ -122,10 +101,6 @@ class Species:  #物質の定義
     def __repr__(self):
         return str(self)
         
-
-
-# In[6]:
-
 
 class Enzyme: #酵素の
     """  Enzyme Setup  """
@@ -159,9 +134,6 @@ class Enzyme: #酵素の
         return finalrate
 
 
-# In[7]:
-
-
 class Edge:    #
     """ それぞれの反応タイプを定義"""
     def __init__(self,type_name, template, input, output, options={}): #vertices:頂点の集合,ege:矢印の集合？(辞書形)
@@ -171,9 +143,6 @@ class Edge:    #
         self.output=output   #会合定数
         self.options=options
     
-    
-    
-
 class ReactionFactory:   #ひな型
     """ Egetypeに基づいて反応を自動的に生成"""
     #データを入れる領域 : コンストラクタ
@@ -308,9 +277,6 @@ class ReactionFactory:   #ひな型
     #N+G->N+N+G
 
 
-# In[61]:
-
-
 def get_total_rate(rate,reactants):   #反応物  rate:初期値                      
     if callable(rate):    #もしrateが呼び出し可能(=関数）なら                   
         return rate(reactants)    
@@ -324,170 +290,6 @@ def mm_rate(reactants,saturators= None,Km=1.0,vmax=1.0): #ミカエリス・メ�
     conc = np.product(np.array([reactant.concentration for reactant in reactants]),axis=0)             
     concsat = np.product(np.array([reactant.concentration for reactant in saturators]),axis=0) if saturators else conc   #後置if文 
     return vmax*conc/(Km+concsat)
-
-
-# In[9]:
-
-
-def discrete_laplacian(M):    #二次元の時：拡散項に使用          
-    """Get the discrete Laplacian of matrix M"""
-
-    #変換                                                                       
-    l=M.shape[0]+2    #(3,3)                                                    
-    #print(l)                                                                   
-    N=np.zeros((l,l))
-    #print(N)                                                                   
-    for i in range(l-2):
-        for j in range(l-2):
-            N[i+1,j+1]=M[i,j]
-                                                                 
-    L = -4*N
-    L += np.roll(N, (0,-1), (0,1)) # right neighbor                             
-    L += np.roll(N, (0,+1), (0,1)) # left neighbor                              
-    L += np.roll(N, (-1,0), (0,1)) # top neighbor   
-    L += np.roll(N, (+1,0), (0,1)) # bottom neighbor                            
-
-                                                                         
-    R=np.zeros(M.shape)
-    for i in range(M.shape[0]):
-        for j in range(M.shape[0]):
-            R[i,j]=L[i+1,j+1]
-
-    return R
-
-
-# In[10]:
-
-
-def compute(t,y,species,reactions):                                                                     
-    yprime = np.zeros(y.shape)  
-    eq = {}
-    for i,s in enumerate(species):      
-        s.concentration = y[i]      
-        eq[s.name] = i              
-        # count if react with saturated enzyme (e.g. exo)
-    for r in reactions:   #r1,r2,r3,r4
-        flux = r.get_flux()     #速度v                                                                                        
-        for s in r.count:   
-            yprime[eq[s.name]] += r.count[s]*flux     
-    if len(y.shape) > 1:
-        yprime += np.array([species[i].diffusion*discrete_laplacian(v) for i, v in enumerate(y)])   #最後に拡散反応による変化  ここ要らない
-    return yprime 
-
-
-# In[11]:
-
-
-#Oligator
-import matplotlib.pyplot as plt
-import matplotlib.pyplot as plt
-from scipy.integrate import solve_ivp
-count=0   
-
-
-                
-G1 = Species("G1",10+1,1.0, 10.0)    #名前、濃度、拡散、パラメーター(安定
-G2 = Species("G2",1,1.0, 10.0)
-G3 = Species("G3",30,1.0, 10.0)
-N= Species("N",10,2.0, 100.0)
-M =  Species("M",0,2.0, 100.0)
-I =  Species("I",0,2.0, 1.0)
-I.inhibitor = "inhibitor"
-#ここの数値を変える？
-species = [N,M,I]
-edge1=Edge("PEN", G1, [N,I], [N],options={"self-start": True})   #N->N自己触媒　　   input[0],input[1]
-edge2 = Edge("PEN", G2, [N], [M])  #N->M N->Pも同じ？
-edge3 = Edge("PEN", G3, [M], [I])
-edges = [edge1,edge2,edge3]
-for s in species: #
-    edges.append(Edge("Exo",s.inhibitor if hasattr(s,'inhibitor') else None,[s],[]))  #ここどういう意味だ？
-species += [G1,G2,G3]
-reactionfactory=ReactionFactory("Oligator",species)   #インスタンス変数
-reactions = []
-for edge in edges:
-    all_gen = reactionfactory.get_reactions(edge)
-    print(all_gen)
-    species += all_gen[0]
-    reactions += all_gen[1]
-    print("\n")
-args=( species, reactions)    #Species Reaction
-
-res = solve_ivp(compute,[0,300],[s.init_conc for s in species],args=args)    #微分方程式をとく。関数f,t、初期値、Species Reaction?????
-#solve_ivp(関数、時間、[A0、B0、C0、,,,](species,reactions))
-
-fig = plt.figure()
-ax = plt.subplot(111)
-ax.plot(res.t,(res.y[:3]).T)    #これはただこの関数を試しただけ  時間を横軸に。yって何？初期値？
-
-#画像を保存
-#タイトルにパラメータと一緒に保存
-box = ax.get_position()
-ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-
-# Put a legend to the right of the current axis
-ax.legend([s.name for s in species], loc='center left', bbox_to_anchor=(1, 0.5))
-plt.savefig("G1=11_G2=1_G3=10"+".png")
-#振動するように変更する
-
-
-# In[12]:
-
-
-#b Bistable Switch
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
-count=0   
-fig, axs = plt.subplots(nrows=6, ncols=6, constrained_layout=True)  #グリッドの行・列
-
-
-G1 = Species("G1",5,1.0, 10.0) 
-N= Species("N",0.01,2.0, 100.0)    #濃度、拡散、安定性(stability)
-P1=  Species("P1",0,2.0, 1.0)
-P2=  Species("P2",1,2.0, 1.0)    
-edge1=Edge("PEN",G1 , [N,P1], [N])   
-edge2=Edge("PP", P2, [N], [P1])     #N->P1 
-edges=[edge1,edge2]
-species = [N,P1,P2]
-for s in [N,P1]:
-    edges.append(Edge("Exo",None,[s],[]))
-species += [G1]
-
-reactionfactory=ReactionFactory("Bistable　Switch",species)   #インスタンス変数
-reactions = []
-for edge in edges:
-    all_gen = reactionfactory.get_reactions(edge)
-    print(all_gen)
-    species += all_gen[0]
-    reactions += all_gen[1]
-    print("\n")
-args=( species, reactions)    #Species Reaction
-
-res = solve_ivp(compute,[0,100],[s.init_conc for s in species],args=args)    #微分方程式をとく。関数f,t、初期値、Species Reaction
-#solve_ivp(関数、時間、[A0、B0、C0、,,,](species,reactions))
-
-fig = plt.figure
-ax = plt.subplot(111)
-ax.plot(res.t,(res.y[:3]).T)    #これはただこの関数を試しただけ  時間を横軸に。yって何？初期値？
-box = ax.get_position()
-ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-
-# Put a legend to the right of the current axis
-ax.legend([s.name for s in species], loc='center left', bbox_to_anchor=(1, 0.5))
-plt.savefig("Bistable:N=5_P2=1"+".png")
-
-#画像を保存
-  
-
-
-# In[ ]:
-
-
-
-
-
-# In[70]:
-
 
 class ReactionFactory_temp:    #tempを作る反応を作る
     
@@ -531,157 +333,3 @@ class ReactionFactory_temp:    #tempを作る反応を作る
             return tempspecies[value[0]]
         print("Unknown value", value)
         return None
-            
-
-
-# In[14]:
-
-
-mydic = {"a": 1, "b": 2}
-list(mydic.values())
-
-
-# In[63]:
-
-
-# datatype: name -> {"species": species, "reactions": reactions, "parameter": something}
-#can use "template", "input", "output"
- #A+B->C+Dの場合
-#templeteは中間生成物？？？
-#これだけだと足りないよね？
-#もっとマクロな視点で大丈夫？ 
-
- #A+B->C+Dの場合
-edgetypetest1= {"direct": {"species": ["template_inhib"], 
-                           "reactions": [([("input",0),("input",1)], [("template_in",)]), ([("template_in",)], [("output",0),("output",1)]),1],
-               "parameter": "1"}}
-#A+B->C
-edgetypetest2= {"direct": {"species": ["template_in"], 
-                           "reactions": [([("input",0),("input",1)], [("template_in",)]), ([("template_in",)], [("output",0)]),1],
-               "parameter": "1"}}
-
-#A->B+C
-edgetypetest3= {"direct": {"species": ["template_in"], 
-                           "reactions": [([("input",0)], [("template_in",)]), ([("template_in",)], [("output",0),("output",1)]),1],
-               "parameter": "1"}}
-#A->B
-edgetypetest4= {"direct": {"species": ["template_in"], 
-                           "reactions": [([("input",0)], [("template_in",)]), ([("template_in",)], [("output",0)]),1],
-               "parameter": "1"}}
-
-
-# In[73]:
-
-
-full_edgetypes = {"PEN":{"species": ["template_in", "template_out", "template_both", "template_ext"],
-                            "reactions": [([("input",0),("template",)],[("template_in",)],"mm_rate"),
-                                         ([("input",0),("template",)],[("template_out",)],1),
-                                         ([("input",0),("template_out",)],[("template_both",)],1),
-                                         ([("input",0),("template_in",)],[("template_both",)],1),
-                                         ([("template_in",),],[("input",0),("template",)],1),   #R5
-                                         ([("template_out",),],[("input",0),("template",)],1),   #R6
-                                         ([("template_both",),],[("input",0),("template_out",)],1),
-                                         ([("template_both",),],[("input",0),("template_in",)],1),    #R8
-                                         ([("template_in",),],[("template_ext",)],1),    #R9
-                                         ([("template_both",),],[("template_ext",),("input",0)],1),   #R10
-                                         ([("template_ext",),],[("template_both",)],1),    #R11
-                                         ([("template",),],[("template_out",)],1,["self-start"]), #R12
-                                         ([("template",),],[("template_out",)],1,["input len 2"])],     #R13
-                        #if(input,1)が存在するなら
-                                        # ([("template_in",0),],[("template_ext",)])  #R13  Inhibitorの扱いどうしよ
-                                         # ([("template_in",0),],[("template_ext",)])   #R14
-                                          #([("template_in",0),],[("template_ext",)])  #R15
-                                            #  ([("template_in",0),],[("template_ext",)])],  #R16
-                            "parameter": "0.2"},
-                  
-                     "PP":{"species": ["template_in", "template_ext"],    #N+P->P+P input [N] output [P]
-                            "reactions": [([("input",0),("template",)],[("template_in",)],1),   #R16
-                                             ([("template_in",)],[("input",0),("template",)],1),   #R17
-                                             ([("template_ext",)],[("template",),("template",)],1),   #R18  ???
-                                             ([("template_in",)],[("template_ext",)],1)],   #R19   
-                            "parameter": "0.2"},
-                     "Exo": {"species": [],    #N+P->P+P input [N] output [P]
-                            "reactions": [([("input",0)],[],1)],   #R20
-                            "parameter": "0.2"}}
-# (Actually, should be save as a yaml file)
-
-#4/11 来週までにやる事
-#①PENの残りの反応を追加  ✅
-#②PP,exoも同様に追加 　　✅
-#③これらの設定を.yamlファイルとして保存？　🍊
-
-
-# In[74]:
-
-
-rfact = ReactionFactory_temp(full_edgetypes)  #ReactionFactory_tempの雛形から実際の中身を生成！
-
-
-# In[75]:
-
-
-#PP test
-G1 = Species("G1",5,1.0, 10.0)    #名前、拡散係数、安定性
-A = Species("A",5,1.0, 10.0) 
-edge0 = Edge("PEN",G1, [A], [A]) #
-rfact.getReactionList(edge0)    #できた？
-
-
-# In[76]:
-
-
-#PP test
-P = Species("P",5,1.0, 10.0)    #名前、拡散係数、安定性
-N = Species("N",5,1.0, 10.0) 
-edge1 = Edge("PP",P, [N], [P]) #
-rfact.getReactionList(edge1)    #できた？P１とP2区別しなくていいよね？
-
-
-# In[77]:
-
-
-#Exo test
-P = Species("P",5,1.0, 10.0)    #名前、拡散係数、安定性
-N = Species("N",5,1.0, 10.0) 
-edge3 = Edge("Exo",None, [N], []) #
-rfact.getReactionList(edge3)    #できた？P１とP2区別しなくていいよね？
-
-
-# In[79]:
-
-
-#後はyamlファイル 
-#🍊どうやって使う？そもそもアクセスできない。。。
-import yaml
-with open("fruit.yaml","r") as yf:
-    data=yaml.safe_load(yf)
-    print(data)
-
-
-# In[80]:
-
-
-rfact2 = ReactionFactory_temp(data)  #ReactionFactory_tempの雛形から実際の中身を生成！
-
-
-# In[81]:
-
-
-G1 = Species("G1",5,1.0, 10.0)    #名前、拡散係数、安定性
-A = Species("A",5,1.0, 10.0) 
-edge0 = Edge("PEN",G1, [A], [A]) #
-rfact2.getReactionList(edge0)    #できた？
-
-
-# In[ ]:
-
-
-#yamlファイルをへん
-#4/25までにやること 
-#①inhibitorの設定・条件 🍊
-#②NotebookからPythonライブラリへの移行　🍊
-　　　#PythonライブラリのAPI が必要Setup.pyなどが必要
-#③vis.py(ランダムなネットワークを作成できるモジュール？)　🍊
-
-#Inhibiter：パラメータ の数が違う
-
