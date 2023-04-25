@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "penpy"
+version = "0.1.0"
+authors = [
+  { name="Ruka Yoshida", email="lukayoshia1216@gmail.com"},
+  { name="Nathanael Aubert-Kato", email="naubertkato@is.ocha.ac.jp" },
+]
+description = "Design and simulation package for enzyme-based chemical reaction networks"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Intended Audience :: Other Audience",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: Python :: 3",
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: MIT License""License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/lukayoshida1216/penpy"
+"Bug Tracker" = "https://github.com/lukayoshida1216/penpy/issues"
