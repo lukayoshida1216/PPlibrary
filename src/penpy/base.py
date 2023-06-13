@@ -5,7 +5,9 @@
 from typing import Optional, MutableMapping, Mapping, Any
 import numpy as np
 from scipy.integrate import solve_ivp
+import importlib.resources
 import yaml
+
 
 # Inspired from Nevergrad (MIT License) Registry class (https://github.com/facebookresearch/nevergrad/blob/master/nevergrad/common/decorators.py)
 class Registry(dict):
@@ -36,6 +38,17 @@ class Registry(dict):
         return self._information.setdefault(name, {})
 
 registry = Registry()
+
+
+def get_reactions_config(path=None):
+    if path is None:
+        path = next(importlib.resources.files("penpy.configs").iterdir())
+
+    with open(path,"r") as f:
+        config = yaml.safe_load(f) #configにはyamlファイルの中身がロードされている。
+    return config
+
+default_config = get_reactions_config()
 
 class Reaction:    
     def __init__(self,name,rate,reactants,products):   
@@ -309,18 +322,23 @@ class ReactionFactory_temp:    #tempを作る反応を作る
             print(i, tempspecies_name)
             tempspecies[i] = Species(tempspecies_name,0,edge.template.diffusion)
         reactions = []
-        for (a,b,rate) in edgetype["reactions"]:
-            input_species = [self.get_value(a_t,edge,tempspecies) for a_t in a]
-            output_species = [self.get_value(b_t,edge,tempspecies) for b_t in b]
-            reactions.append(Reaction(f"R{self.id_num}",self.get_rate(rate),input_species,output_species))
-            self.id_num += 1
+        for react in edgetype["reactions"]:
+            (a,b,rate) = react[:3]    #ここ何やってるの？　🍊
+            condition = None
+            if len(react) > 3:
+                condition = react[3:]
+            #TODO: condition?
+            if condition is None or self.eval_condition(condition):     #condition(option)なしまたは、eval_conditionがFalseの場合
+                input_species = [self.get_value(a_t,edge,tempspecies) for a_t in a]
+                output_species = [self.get_value(b_t,edge,tempspecies) for b_t in b]
+                reactions.append(Reaction(f"R{self.id_num}",self.get_rate(rate),input_species,output_species))
+                self.id_num += 1
         return  tempspecies.values(), reactions#TODO
-    
-    def get_rate(self, r):
-        if type(r) == str:
-            return registry[r]
-        else:
-            return r
+
+
+    def eval_condition(self, condition):    #🍊とりあえずスキップしてる
+        #TODO
+        return False
     
     def get_value(self, value, edge, tempspecies):
         if value[0] == "input":
