@@ -27,9 +27,14 @@ class ReactionFactoryTestCase(unittest.TestCase):
     def test_PEN_getReactionList(self):  #例外処理（Inhibitor,self-start?)
         G1 = Species("G1",5,1.0, 10.0)    #名前、拡散係数、安定性
         A = Species("A",5,1.0, 10.0) 
-        edge1 = Edge("PEN",G1, [A], [A]) 
-        rlist = self.rfact.getReactionList(edge1)
-        self.assertTrue(len(rlist[1])==11) #reactionの長さ
+        I = Species("I",5,1.0, 10.0) 
+        edge0 = Edge("PEN",G1, [A, I], [A]) #       
+        rlist=self.rfact.getReactionList(edge0)
+        print(rlist)
+        #reactionの数＝11個
+        self.assertTrue(len(rlist[1])==16) 
+        
+        #contentsの確認
         self.assertTrue(rlist[1][0].reactants[0] is A) #TO DO
         self.assertTrue(rlist[1][0].reactants[1] is G1)
         self.assertTrue(rlist[1][0].products[0] is G1_in)
@@ -61,9 +66,15 @@ class ReactionFactoryTestCase(unittest.TestCase):
         self.assertTrue(rlist[1][9].products[1] is A)
         self.assertTrue(rlist[1][10].reactants[0] is G1_ext)
         self.assetTrue(rlist[1][10].products[0] is G1_both)
-        #self.assertTrue
-        self.assertTrue(rlist[1][0].count[N] == -1) #TO DO
    
+    def test_PP_getReactionList(self):
+        P=Species("P",5,1.0,10.0)
+        N=Species("N",5,1.0,10.0)
+        edge2 = Edge("PP",P,[N],[P])
+        rlist = self.rfact.getReactionList(edge2)
+
+        
+
 
 if __name__ == "__main__":  
     unittest.main() #テストスクリプトのコマンドライン用インターフェースを提供
