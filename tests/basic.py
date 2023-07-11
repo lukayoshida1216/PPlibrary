@@ -79,11 +79,3 @@ class ReactionFactoryTestCase(unittest.TestCase):
 if __name__ == "__main__":  
     unittest.main() #テストスクリプトのコマンドライン用インターフェースを提供
 
-
-    #PEN test
-    rfact = ReactionFactory_temp(base_config)
-    G1 = Species("G1",5,1.0, 10.0)    #名前、拡散係数、安定性  ❓ライブラリの中のclassの使い方
-    A = Species("A",5,1.0, 10.0) 
-    edge0 = Edge("PEN",G1, [A], [A]) #
-    
-    print(rfact.getReactionList(edge0))    #できた？
